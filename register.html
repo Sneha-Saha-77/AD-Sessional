@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LeafLens - Registration Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(to bottom, #a8e6cf, #dcedc1);
+        }
+        .register-box {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin: 50px auto;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-box">
+        <h1 class="text-2xl font-bold text-green-800">Register for LeafLens</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} p-2 mb-4 rounded text-center 
+                        {% if category == 'success' %}bg-green-100 text-green-800
+                        {% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" class="border rounded p-2 mt-4 w-full" required>
+            <input type="password" name="password" placeholder="Password" class="border rounded p-2 mt-4 w-full" required>
+            <button type="submit" class="bg-green-500 text-white rounded p-2 mt-4 w-full">Register</button>
+        </form>
+        <p class="mt-4">Already have an account? <a href="/login.html" class="text-green-500">Login Now</a></p>
+    </div>
+</body>
+</html>

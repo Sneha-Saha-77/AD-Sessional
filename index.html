@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Plant Disease Diagnosis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <base href="/">
+    <style>
+        .drop-zone {
+            border: 2px dashed #4CAF50;
+            border-radius: 20px;
+            transition: background-color 0.3s;
+        }
+        .drop-zone.highlight {
+            background-color: #E8F5E9;
+        }
+        .history-item {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="bg-green-50 min-h-screen flex flex-col justify-center items-center">
+    <div class="container mx-auto px-4 py-8 max-w-xl">
+        <h1 class="text-4xl font-bold text-center text-green-800 mb-8">
+            Plant Disease Diagnostic Tool
+        </h1>
+        
+        <div id="upload-container" class="drop-zone p-8 text-center border-2 border-dashed border-green-300">
+            <input type="file" id="file-input" accept="image/*" class="hidden">
+            <label for="file-input" class="cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-24 w-24 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p class="mt-4 text-lg text-gray-600">
+                    Drag and drop a leaf image or click to upload
+                </p>
+            </label>
+        </div>
+
+        <div id="loading" class="hidden text-center mt-4">
+            <p class="text-green-700">Analyzing image...</p>
+        </div>
+
+        <div id="result-container" class="hidden mt-8 text-center bg-white p-6 rounded-lg shadow-md">
+            <h2 id="disease-name" class="text-2xl font-semibold text-green-700"></h2>
+            <p id="confidence-text" class="text-gray-600 mt-2"></p>
+            <img id="uploaded-image" class="mx-auto mt-4 max-h-64 rounded-lg shadow-md">
+        </div>
+
+        <div id="history-container" class="mt-8">
+            <h2 class="text-2xl font-semibold text-green-700">Prediction History</h2>
+            <div id="history-list" class="mt-4"></div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('upload-container');
+        const fileInput = document.getElementById('file-input');
+        const resultContainer = document.getElementById('result-container');
+        const loadingIndicator = document.getElementById('loading');
+        const diseaseNameEl = document.getElementById('disease-name');
+        const confidenceTextEl = document.getElementById('confidence-text');
+        const uploadedImageEl = document.getElementById('uploaded-image');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight() {
+            dropZone.classList.remove('highlight');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        fileInput.addEventListener('change', handleFiles, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            files = files instanceof Event ? files.target.files : files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            loadingIndicator.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImageEl.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                loadingIndicator.classList.add('hidden');
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Upload failed');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                diseaseNameEl.textContent = `Detected Disease: ${data.disease}`;
+                confidenceTextEl.textContent = `Confidence: ${data.confidence.toFixed(2)}%`;
+                resultContainer.classList.remove('hidden');
+                updateHistory(data.history);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingIndicator.classList.add('hidden');
+                alert(`Error: ${error.message}`);
+            });
+        }
+
+        function updateHistory(history) {
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = '';
+
+            history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <strong>${item.disease}</strong> - Confidence: ${item.confidence.toFixed(2)}%
+                    <br>
+                    <img src="/uploads/${item.image}" alt="${item.disease}" class="max-h-32 mt-2 rounded-lg shadow-md">
+                `;
+                historyList.appendChild(historyItem);
+            });
+        }
+    </script>
+</body>
+</html>
